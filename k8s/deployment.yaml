@@ -14,7 +14,7 @@ spec:
     spec:
       containers:
       - name: sample-app
-        image: dockerhub-username/sample-app:latest
+        image: venkatnivi062/sample-ci-cd-app:latest
         ports:
         - containerPort: 80
 ---
