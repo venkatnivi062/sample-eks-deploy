@@ -1,0 +1,55 @@
+name: Deploy to EKS
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout Repository
+      uses: actions/checkout@v3
+
+    - name: Configure AWS Credentials
+      uses: aws-actions/configure-aws-credentials@v2
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: ${{ secrets.AWS_REGION }}
+
+    - name: Install eksctl
+      run: |
+        curl --silent --location "https://github.com/weaveworks/eksctl/releases/latest/download/eksctl_$(uname -s)_amd64.tar.gz" | tar xz -C /tmp
+        sudo mv /tmp/eksctl /usr/local/bin
+
+    - name: Install kubectl
+      run: |
+        curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+        chmod +x kubectl
+        sudo mv kubectl /usr/local/bin/
+
+    - name: Create EKS Cluster
+      run: |
+        eksctl create cluster \
+          --name sample-cluster \
+          --region ${{ secrets.AWS_REGION }} \
+          --nodegroup-name sample-nodegroup \
+          --node-type t3.medium \
+          --nodes 2 \
+          --managed
+
+    - name: Update kubeconfig
+      run: |
+        aws eks update-kubeconfig --name sample-cluster --region ${{ secrets.AWS_REGION }}
+
+    - name: Deploy Application
+      run: |
+        kubectl apply -f k8s/deployment.yaml
+
+    - name: Verify Deployment
+      run: |
+        kubectl get pods
+        kubectl get svc
